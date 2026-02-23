@@ -1,16 +1,13 @@
-#include "orientation.h"
 #include <iostream>
 
 #define cimg_use_png
 #include "CImg.h"
 
+#include "orientation.h"
+
+
 int dev_test() {
     std::cout << "Hello, World!" << std::endl;
-
-    // let's try to use CImg library to load and display an image
-
-    cimg_library::CImg<unsigned char> image("../source/data/Screenshot_20260223_111115.png"); // replace with your image path
-
 
     // lets's try to use the orientation class
     Miller m1; // default constructor
@@ -21,4 +18,23 @@ int dev_test() {
     Eigen::Vector3i uvw(4,5,6);
     Miller m2(hkl, uvw);
     std::cout << "Miller m2 : " << m2 << std::endl;
+
+  
+    // let's try to use CImg library to generate an image
+    cimg_library::CImg<unsigned char> image(256,256,1,3); // replace with your image path
+    // fill the image with a gradient
+    cimg_forXY(image,x,y) {
+        image(x,y,0) = x; // red channel
+        image(x,y,1) = y; // green channel
+        image(x,y,2) = 128; // blue channel
+    }
+    // draw a white circle in the center
+    const unsigned char white[] = {255,255,255};
+    image.draw_circle(128,128,50, white);
+    // save the image
+    image.save("gradient.png");
+
+
+    return 0;
+
 }

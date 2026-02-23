@@ -19,6 +19,9 @@ set(SOURCES
     source/src/main.cpp
     source/src/orientation.cpp
     source/src/dev_test.cpp
+    source/src/detector.cpp
+    source/src/microscope.cpp
+    source/src/crystal.cpp
 )
 
 # Add the executable
