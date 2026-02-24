@@ -2,7 +2,7 @@
 
 #include "orientation.h"
 
-class Detector;
+#include "detector.h"
 
 class Microscope
 {
@@ -17,9 +17,11 @@ public:
 
     double getAcceleratingVoltage() const { return m_acceleratingVoltage; }
     double getElectronWavelength() const { return m_lambda; }
-    Detector* getDetector() const { return m_detector; }
+    Detector *getDetector() const { return m_detector; }
 
+    Quat getOrientation() const { return m_qMS; }
 
+    void dump() const; // for debugging purposes, to print the microscope parameters
 
 private:
     double m_acceleratingVoltage; // in kV
@@ -28,6 +30,6 @@ private:
     int m_TiltAxis; // 0 for Xm, 1 for Ym
 
     Quat m_qMS; // the orientation of the microscope frame with respect to the sample frame, expressed as a quaternion
-    Detector* m_detector; // pointer to the detector
+    Detector *m_detector; // pointer to the detector
 };
 

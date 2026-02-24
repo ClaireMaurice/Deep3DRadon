@@ -12,6 +12,19 @@ public:
 
     void setNumPixels(int numPixelsX, int numPixelsY);
     void setPixelSize(double pixelSize);
+    void setOrientation(const Quat& qDM);
+
+    void getNumPixels(int& numPixelsX, int& numPixelsY) const {
+        numPixelsX = m_numPixelsX;
+        numPixelsY = m_numPixelsY;
+    }
+    void getPixelSize(double& pixelSize) const {
+        pixelSize = m_pixelSize;
+    }
+
+    Quat getOrientation() const { return m_qDM; }
+
+
     void dump() const; // for debugging purposes, print the detector parameters
 
 private:

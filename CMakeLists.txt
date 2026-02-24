@@ -22,6 +22,7 @@ set(SOURCES
     source/src/detector.cpp
     source/src/microscope.cpp
     source/src/crystal.cpp
+    source/src/pattern.cpp
 )
 
 # Add the executable

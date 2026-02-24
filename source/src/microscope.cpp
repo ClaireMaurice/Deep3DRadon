@@ -1,7 +1,9 @@
+#include <iostream>
+
 #include "microscope.h"
 #include "detector.h"
 
-Microscope::Microscope() : m_tiltAngle(70), m_TiltAxis(1)
+Microscope::Microscope() : m_tiltAngle(-70), m_TiltAxis(0)
 {
     // default accelerating voltage is 20 kV, corresponding to an electron wavelength of 0.0251 nm
     setAcceleratingVoltage(20);
@@ -21,7 +23,20 @@ void Microscope::setAcceleratingVoltage(double voltage_kV) {
     const double c = 299792458; // speed of light in m/s
 
     double V = m_acceleratingVoltage * 1e3; // convert kV to V
-    m_lambda = h / sqrt(2*m*e*V*(1+e*V/(2*m*c*c))) * 1e9; // convert m to nm
+    m_lambda = h / sqrt(2*m*e*V*(1+e*V/(2*m*c*c))) * 1e10; // convert m to A
+
+    // checking the calculated wavelength
+    // double expected_lambda = 12.2643/sqrt(V*(1+0.97845e-6*V)); // expected wavelength in A for 20 kV
+    // std::cout << "Calculated electron wavelength: " << m_lambda << " A" << std::endl;
+    // std::cout << "Expected electron wavelength: " << expected_lambda  << " A" << std::endl; 
+}
+
+void Microscope::dump() const {
+    std::cout << "Microscope parameters:" << std::endl;
+    std::cout << "Accelerating voltage: " << m_acceleratingVoltage << " kV" << std::endl;
+    std::cout << "Electron wavelength: " << m_lambda << " nm" << std::endl;
+    std::cout << "Tilt angle: " << m_tiltAngle << " degrees" << std::endl;
+    std::cout << "Tilt axis: " << (m_TiltAxis == 0 ? "Xm" : "Ym") << std::endl;
 }
 
 Microscope::~Microscope() {

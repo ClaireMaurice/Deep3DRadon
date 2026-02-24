@@ -6,25 +6,34 @@
 #include "orientation.h"
 #include "microscope.h"
 #include "detector.h"
+#include "crystal.h"
+#include "source_point.h"
+#include "pattern.h"
+
+
 
 
 extern int dev_test();
-
-void simulateWiredPattern();
-    // TODO : simulate a wired pattern for testing the orientation estim
-
 
 int main() {
     //dev_test();
 
     Microscope microscope;
-    //Crystal crystal;
-    
-    std::cout << "Microscope initialized with accelerating voltage : " << microscope.getAcceleratingVoltage() << " kV" << std::endl;
-    std::cout << "Electron wavelength : " << microscope.getElectronWavelength() << " nm" << std::endl;
-    
-    microscope.getDetector()->dump();
+    microscope.dump();
 
+    Crystal crystal;
+
+    crystal.buildUnitCell("Copper","FCC",3.615);
+    crystal.buildReflectors();
+    crystal.dump();
+
+    SourcePoint sourcePoint(Euler(10,0,0), Eigen::Vector3d(0.5,0.7,0.5));
+    sourcePoint.dump();
+
+
+    Pattern pattern;
+    pattern.simulate(microscope, crystal, sourcePoint);
+    pattern.save("simulated_pattern.png");
 
     return 0;
 }
