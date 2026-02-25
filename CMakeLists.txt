@@ -23,6 +23,8 @@ set(SOURCES
     source/src/microscope.cpp
     source/src/crystal.cpp
     source/src/pattern.cpp
+    source/src/radon_transform.cpp
+    source/src/k_lines.cpp
 )
 
 # Add the executable

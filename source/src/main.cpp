@@ -9,9 +9,7 @@
 #include "crystal.h"
 #include "source_point.h"
 #include "pattern.h"
-
-
-
+#include "radon_transform.h"
 
 extern int dev_test();
 
@@ -19,21 +17,24 @@ int main() {
     //dev_test();
 
     Microscope microscope;
-    microscope.dump();
+    //microscope.dump();
 
     Crystal crystal;
 
     crystal.buildUnitCell("Copper","FCC",3.615);
     crystal.buildReflectors();
-    crystal.dump();
+    //crystal.dump();
 
     SourcePoint sourcePoint(Euler(10,0,0), Eigen::Vector3d(0.5,0.7,0.5));
-    sourcePoint.dump();
-
+    //sourcePoint.dump();
 
     Pattern pattern;
     pattern.simulate(microscope, crystal, sourcePoint);
     pattern.save("simulated_pattern.png");
+
+    // RadonTransform radonTransform;
+    // radonTransform.setViewPoint(Eigen::Vector3d(0.5,0.7,0.5));
+    // radonTransform.dump();
 
     return 0;
 }
