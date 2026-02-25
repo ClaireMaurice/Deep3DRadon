@@ -32,9 +32,12 @@ int main() {
     pattern.simulate(microscope, crystal, sourcePoint);
     pattern.save("simulated_pattern.png");
 
+
+    // SourcePoint viewPoint(Euler(10,0,0), Eigen::Vector3d(0.5,0.7,0.5));
+
     // RadonTransform radonTransform;
-    // radonTransform.setViewPoint(Eigen::Vector3d(0.5,0.7,0.5));
-    // radonTransform.dump();
+    // radonTransform.computeRadonTransform(microscope, crystal, viewPoint, pattern);
+
 
     return 0;
 }

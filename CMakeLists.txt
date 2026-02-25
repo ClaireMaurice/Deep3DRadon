@@ -25,6 +25,7 @@ set(SOURCES
     source/src/pattern.cpp
     source/src/radon_transform.cpp
     source/src/k_lines.cpp
+    source/src/projector.cpp
 )
 
 # Add the executable

@@ -6,6 +6,8 @@
 #include "crystal.h"
 #include "source_point.h"
 #include "k_lines.h"
+#include "projector.h"
+
 
 void Pattern::simulate(Microscope& microscope, Crystal& crystal, SourcePoint& source_point)
 {
@@ -13,6 +15,9 @@ void Pattern::simulate(Microscope& microscope, Crystal& crystal, SourcePoint& so
     bool verbose = false; // for debugging purposes, we can set this to true to print the parameters of the simulation and the intermediate results, and we can set it to false to disable the debug output for a cleaner output when we are confident that the simulation is working correctly
 
     std::cout << "Simulating diffraction pattern..." << std::endl;
+
+    Projector projector;
+    projector.buildProjectorList(microscope, crystal, source_point);
 
     // allocate a blank image for the pattern of size obtained from the microscope parameters
     int img_width, img_height;
@@ -25,86 +30,51 @@ void Pattern::simulate(Microscope& microscope, Crystal& crystal, SourcePoint& so
 
     pattern_img = CImg<unsigned char>(img_width, img_height, 1,1, 0); // create a blank black image
 
-    Quat q_DM = microscope.getDetector()->getOrientation();
-    Quat q_MS = microscope.getOrientation();
-    Quat q_SC = source_point.getOrientation().Conjugate(); // we need the conjugate of the source point orientation to get the correct transformation from the crystal frame to the detector frame
-    Quat q_DC = q_SC * q_MS * q_DM; // the order of multiplication is important here, we need to apply the transformations in the correct order to get the correct orientation of the crystal with respect to the detector
+    // Quat q_DM = microscope.getDetector()->getOrientation();
+    // Quat q_MS = microscope.getOrientation();
+    // Quat q_SC = source_point.getOrientation().Conjugate(); // we need the conjugate of the source point orientation to get the correct transformation from the crystal frame to the detector frame
+    // Quat q_DC = q_SC * q_MS * q_DM; // the order of multiplication is important here, we need to apply the transformations in the correct order to get the correct orientation of the crystal with respect to the detector
     
-    Eigen::Matrix3d R_DC = q_DC.toRotationMatrix();
+    // Eigen::Matrix3d R_DC = q_DC.toRotationMatrix();
 
-    if(verbose) {
-        std::cout << "Transport matrix (DC) : " << std::endl << R_DC << std::endl;
-    }
+    // if(verbose) {
+    //     std::cout << "Transport matrix (DC) : " << std::endl << R_DC << std::endl;
+    // }
 
 
-    // TODO : verification of the transport matrix, we can print the quaternions and check that they are correct, and we can also check that the resulting orientation of the crystal with respect to the detector is correct by comparing it with the expected orientation based on the microscope and source point parameters
-    // // need the transport matrice DC = DM * MS * SC
-    // Eigen::Matrix3d DM = microscope.getDetector()->getOrientation().toRotationMatrix();
-    // Eigen::Matrix3d MS = microscope.getOrientation().toRotationMatrix();
-    // Eigen::Matrix3d SC = source_point.getOrientation().toRotationMatrix().transpose();
+    // // TODO : verification of the transport matrix, we can print the quaternions and check that they are correct, and we can also check that the resulting orientation of the crystal with respect to the detector is correct by comparing it with the expected orientation based on the microscope and source point parameters
+    // // // need the transport matrice DC = DM * MS * SC
+    // // Eigen::Matrix3d DM = microscope.getDetector()->getOrientation().toRotationMatrix();
+    // // Eigen::Matrix3d MS = microscope.getOrientation().toRotationMatrix();
+    // // Eigen::Matrix3d SC = source_point.getOrientation().toRotationMatrix().transpose();
     
-    // Eigen::Matrix3d DC = DM * MS * SC; // the order of multiplication is important here, we need to apply the transformations in the correct order to get the correct orientation of the crystal with respect to the detector
-    // std::cout << "Transport matrix (DC) : " << std::endl << DC << std::endl;
+    // // Eigen::Matrix3d DC = DM * MS * SC; // the order of multiplication is important here, we need to apply the transformations in the correct order to get the correct orientation of the crystal with respect to the detector
+    // // std::cout << "Transport matrix (DC) : " << std::endl << DC << std::endl;
 
 
     
-    // to calculate the reciprocal lattice vectors, we need the lattice parameters of the crystal, which we can get from the unit cell parameters
-    // for simplicity we assume a cubic lattice for now
-    double a0 = crystal.getUnitCell().getLatticeParameters()[0];  //in Angstroms
+    // // to calculate the reciprocal lattice vectors, we need the lattice parameters of the crystal, which we can get from the unit cell parameters
+    // // for simplicity we assume a cubic lattice for now
+    // double a0 = crystal.getUnitCell().getLatticeParameters()[0];  //in Angstroms
 
-    // source point position
+    // // source point position
     Eigen::Vector3d PC = source_point.getPosition(); 
     
-    // convert to PC coordinates in pixels (TODO : check that the conversion is correct)
+    // // convert to PC coordinates in pixels (TODO : check that the conversion is correct)
     Eigen::Vector3d PCpix(PC(0)*img_width,(1-PC(1))*img_height,PC(2)*img_width); // in pixels, with the origin at the top left corner of the image, and the y axis pointing downwards
     
     const unsigned char white[] = {255,255,255};
 //    pattern_img.draw_circle(PCpix(0), PCpix(1), 5, white); // draw the source point on the image for visualization purposes, we can later replace this with a more accurate representation of the source point, but for now this is a simple way to visualize the position of the source point on the screen
 
     // iterate over the reflectors of the crystal and simulate the diffraction spots based on the source point and microscope parameters
-    for (const auto& reflector : crystal.getReflectors()) {
+    for (const auto& reflector : projector.getProjectorList()) {
         
-        Eigen::Vector3i hkl = reflector.getHKL();
-
-        if (verbose) {
-            std::cout << "Simulating Kikuchi Lines for reflector with Miller indices (" << hkl.transpose() << ")" << std::endl;   
-        }
-        
-        // compute the reciprocal lattice vector for the given Miller indices, for simplicty a cubic lattice is assumed for now, but this can be easily extended to other lattice types by using the appropriate formulas for the reciprocal lattice vectors based on the lattice parameters of the crystal
-        Eigen::Vector3d g_hkl = 1/a0 * hkl.cast<double>(); // in reciprocal angstroms, since a0 is in angstroms and hkl is dimensionless
-        
-        // transport to detector frame
-        g_hkl = R_DC * g_hkl; // apply the transport matrix to get the orientation of the reciprocal lattice vector with respect to the detector frame
-
-        // compute the interplanar spacing d_hkl = 1 / |g_hkl|, 
-        //and then compute the diffraction angle theta using Bragg's law: n*lambda = 2*d_hkl*sin(theta), 
-        //where n is the order of the reflection (we can assume n=1 for now), 
-        //lambda is the electron wavelength obtained from the microscope parameters, 
-        //and d_hkl is the interplanar spacing calculated from the reciprocal lattice vector.
-    
-        // beware of dimensions : 
-        double d_hkl = 1.0 / g_hkl.norm();  // in angstroms, since g_hkl is in reciprocal angstroms
-        double lambda = microscope.getElectronWavelength(); // in Angstroms
-        double sin_theta = lambda / (2 * d_hkl); // Bragg's law
-        double s2 = sin_theta * sin_theta;
-
-        if (verbose) {
-            std::cout << "Reciprocal lattice vector g_hkl: " << g_hkl.transpose() << std::endl;
-            std::cout << "Interplanar spacing d_hkl: " << d_hkl << " Angstroms" << std::endl;
-            std::cout << "Electron wavelength lambda: " << lambda << " Angstroms" << std::endl;
-            std::cout << "sin(theta): " << sin_theta << std::endl;
-        }
-
+        Eigen::Vector3d g_hkl = reflector.head<3>(); // the first three components of the projector normal are the reciprocal lattice vector, which we can use to compute the diffraction spots on the screen based on the microscope and source point parameters
+        double s2 = reflector(3); // the fourth component of the projector normal is the sin^2(theta) value, 
      
         KLines k_lines;
         int result = k_lines.buildKLines(g_hkl, s2, PCpix, img_width, img_height);
-
-        if (verbose) {
-            std::cout << "KLines parameters for reflector (" << hkl.transpose() << "): " << std::endl;
-            k_lines.dump();
-        }
-
-        
+       
         if(result == 0) {
             if (verbose)
                 std::cout << "Not visible on the screen, skipping this reflector." << std::endl;
@@ -123,7 +93,7 @@ void Pattern::simulate(Microscope& microscope, Crystal& crystal, SourcePoint& so
                             pattern_img.draw_point(x, y1, white); 
                         }
                         if(y2 >= 0 && y2 < img_height) {
-                        pattern_img.draw_point(x, y2, white); 
+                            pattern_img.draw_point(x, y2, white); 
                         }
                    }
                 }
