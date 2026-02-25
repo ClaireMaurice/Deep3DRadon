@@ -30,40 +30,7 @@ void Pattern::simulate(Microscope& microscope, Crystal& crystal, SourcePoint& so
 
     pattern_img = CImg<unsigned char>(img_width, img_height, 1,1, 0); // create a blank black image
 
-    // Quat q_DM = microscope.getDetector()->getOrientation();
-    // Quat q_MS = microscope.getOrientation();
-    // Quat q_SC = source_point.getOrientation().Conjugate(); // we need the conjugate of the source point orientation to get the correct transformation from the crystal frame to the detector frame
-    // Quat q_DC = q_SC * q_MS * q_DM; // the order of multiplication is important here, we need to apply the transformations in the correct order to get the correct orientation of the crystal with respect to the detector
-    
-    // Eigen::Matrix3d R_DC = q_DC.toRotationMatrix();
-
-    // if(verbose) {
-    //     std::cout << "Transport matrix (DC) : " << std::endl << R_DC << std::endl;
-    // }
-
-
-    // // TODO : verification of the transport matrix, we can print the quaternions and check that they are correct, and we can also check that the resulting orientation of the crystal with respect to the detector is correct by comparing it with the expected orientation based on the microscope and source point parameters
-    // // // need the transport matrice DC = DM * MS * SC
-    // // Eigen::Matrix3d DM = microscope.getDetector()->getOrientation().toRotationMatrix();
-    // // Eigen::Matrix3d MS = microscope.getOrientation().toRotationMatrix();
-    // // Eigen::Matrix3d SC = source_point.getOrientation().toRotationMatrix().transpose();
-    
-    // // Eigen::Matrix3d DC = DM * MS * SC; // the order of multiplication is important here, we need to apply the transformations in the correct order to get the correct orientation of the crystal with respect to the detector
-    // // std::cout << "Transport matrix (DC) : " << std::endl << DC << std::endl;
-
-
-    
-    // // to calculate the reciprocal lattice vectors, we need the lattice parameters of the crystal, which we can get from the unit cell parameters
-    // // for simplicity we assume a cubic lattice for now
-    // double a0 = crystal.getUnitCell().getLatticeParameters()[0];  //in Angstroms
-
-    // // source point position
-    Eigen::Vector3d PC = source_point.getPosition(); 
-    
-    // // convert to PC coordinates in pixels (TODO : check that the conversion is correct)
-    Eigen::Vector3d PCpix(PC(0)*img_width,(1-PC(1))*img_height,PC(2)*img_width); // in pixels, with the origin at the top left corner of the image, and the y axis pointing downwards
-    
-    const unsigned char white[] = {255,255,255};
+        const unsigned char white[] = {255,255,255};
 //    pattern_img.draw_circle(PCpix(0), PCpix(1), 5, white); // draw the source point on the image for visualization purposes, we can later replace this with a more accurate representation of the source point, but for now this is a simple way to visualize the position of the source point on the screen
 
     // iterate over the reflectors of the crystal and simulate the diffraction spots based on the source point and microscope parameters
@@ -73,7 +40,7 @@ void Pattern::simulate(Microscope& microscope, Crystal& crystal, SourcePoint& so
         double s2 = reflector(3); // the fourth component of the projector normal is the sin^2(theta) value, 
      
         KLines k_lines;
-        int result = k_lines.buildKLines(g_hkl, s2, PCpix, img_width, img_height);
+        int result = k_lines.buildKLines(g_hkl, s2, source_point.getPosition(), img_width, img_height);
        
         if(result == 0) {
             if (verbose)
@@ -83,34 +50,7 @@ void Pattern::simulate(Microscope& microscope, Crystal& crystal, SourcePoint& so
             if (verbose)
                 std::cout << "Visible on the screen, drawing the Kikuchi lines for this reflector." << std::endl;
 
-            // let's do the work:
-            if(k_lines.isHorizontal()) {
-                // we can iterate over the x coordinates of the image and compute the corresponding y coordinates of the conic section defined by the k_lines parameters, and then draw a line between the two intersection points to visualize the spot on the screen
-                for (int x = 0; x < img_width ; x++) {
-                    double y1, y2;
-                    if(k_lines.getY(x, y1, y2)) { // get the corresponding y coordinates of the conic section defined by the k_lines parameters for the given x coordinate
-                        if(y1 >= 0 && y1 < img_height) {
-                            pattern_img.draw_point(x, y1, white); 
-                        }
-                        if(y2 >= 0 && y2 < img_height) {
-                            pattern_img.draw_point(x, y2, white); 
-                        }
-                   }
-                }
-            } else {
-                // we can iterate over the y coordinates of the image and compute the corresponding x coordinates of the conic section defined by the k_lines parameters, and then draw a line between the two intersection points to visualize the spot on the screen
-                for (int y = 0; y < img_height ; y++) {
-                    double x1, x2;
-                    if(k_lines.getX(y, x1, x2)) {  // get the corresponding x coordinates of the conic section defined by the k_lines parameters for the given y coordinate
-                        if(x1 >= 0 && x1 < img_width) {
-                            pattern_img.draw_point(x1, y, white); 
-                        }
-                        if(x2 >= 0 && x2 < img_width) {
-                            pattern_img.draw_point(x2, y, white); 
-                        }
-                    }
-                }
-            }
+            k_lines.draw(pattern_img); 
         }
     }
 }

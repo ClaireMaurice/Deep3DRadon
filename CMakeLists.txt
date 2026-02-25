@@ -13,6 +13,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 # Find required packages
 find_package(PNG REQUIRED)
+find_package(TIFF REQUIRED)
 
 # Add source files
 set(SOURCES
@@ -26,6 +27,7 @@ set(SOURCES
     source/src/radon_transform.cpp
     source/src/k_lines.cpp
     source/src/projector.cpp
+    source/src/local_radon_box.cpp
 )
 
 # Add the executable
@@ -40,7 +42,10 @@ target_include_directories(d3r PRIVATE
 )
 
 # Link libraries
-target_link_libraries(d3r PRIVATE PNG::PNG)
+target_link_libraries(d3r PRIVATE 
+    PNG::PNG 
+    TIFF::TIFF
+)
 
 # Compiler-specific flags for better warnings and optimization
 if(MSVC)

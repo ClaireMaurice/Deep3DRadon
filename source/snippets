@@ -1,0 +1,51 @@
+void saveVolumeAsSlices(const CImg<double>& volume, const std::string& basename) {
+    for (int z = 0; z < volume.depth(); z++) {
+        CImg<double> slice = volume.get_slice(z);
+        std::string filename = basename + "_slice_" + std::to_string(z) + ".png";
+        slice.save(filename.c_str());
+    }
+}
+
+void saveVolumeBinary(const CImg<double>& volume, const std::string& filename) {
+    std::ofstream file(filename, std::ios::binary);
+    
+    // Write header
+    int width = volume.width();
+    int height = volume.height();
+    int depth = volume.depth();
+    file.write(reinterpret_cast<char*>(&width), sizeof(int));
+    file.write(reinterpret_cast<char*>(&height), sizeof(int));
+    file.write(reinterpret_cast<char*>(&depth), sizeof(int));
+    
+    // Write data
+    for (int z = 0; z < depth; z++) {
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                double value = volume(x, y, z, 0);
+                file.write(reinterpret_cast<char*>(&value), sizeof(double));
+            }
+        }
+    }
+    file.close();
+}
+
+// To load it back:
+CImg<double> loadVolumeBinary(const std::string& filename) {
+    std::ifstream file(filename, std::ios::binary);
+    int w, h, d;
+    file.read(reinterpret_cast<char*>(&w), sizeof(int));
+    file.read(reinterpret_cast<char*>(&h), sizeof(int));
+    file.read(reinterpret_cast<char*>(&d), sizeof(int));
+    
+    CImg<double> volume(w, h, d, 1, 0);
+    for (int z = 0; z < d; z++) {
+        for (int y = 0; y < h; y++) {
+            for (int x = 0; x < w; x++) {
+                double value;
+                file.read(reinterpret_cast<char*>(&value), sizeof(double));
+                volume(x, y, z, 0) = value;
+            }
+        }
+    }
+    return volume;
+}

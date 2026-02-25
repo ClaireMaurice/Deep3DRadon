@@ -20,6 +20,16 @@ public:
         pattern_img.save(filename.c_str());
     }
 
+    int getWidth() const {
+        return pattern_img.width();
+    }
+    int getHeight() const {
+        return pattern_img.height();
+    }
+    const CImg<unsigned char>& getPattern() const {
+        return pattern_img;
+    }
+
 private:
     CImg<unsigned char> pattern_img;
 

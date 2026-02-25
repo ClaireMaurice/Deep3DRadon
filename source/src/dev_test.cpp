@@ -1,5 +1,6 @@
 #include <iostream>
 
+#define cimg_use_tiff
 #define cimg_use_png
 #include "CImg.h"
 
@@ -33,6 +34,25 @@ int dev_test() {
     image.draw_circle(128,128,50, white);
     // save the image
     image.save("gradient.png");
+    image.save_tiff("gradient.tiff");
+    // works ok on 2D images
+
+    // let's try to use CImg library to generate a 3D image
+    cimg_library::CImg<double> image3D(16,16,16,3); // replace with your image path
+    // fill the image with a gradient
+    cimg_forXYZ(image3D,x,y,z) {
+        image3D(x,y,z,0) = x; // red channel
+        image3D(x,y,z,1) = y; // green channel
+        image3D(x,y,z,2) = z; // blue channel
+    }
+    // save the image
+    image3D.save("gradient3D.tiff");
+
+
+
+
+
+
 
 
     return 0;
