@@ -38,7 +38,7 @@ int main()
     crystal.buildReflectors();
     // crystal.dump();
 
-    SourcePoint sourcePoint(Euler(10, 0, 0), Eigen::Vector3d(0.5, 0.7, 0.5));
+    SourcePoint sourcePoint(Euler(65, 76, 24), Eigen::Vector3d(0.5, 0.7, 0.5));
     // sourcePoint.dump();
 
     Pattern pattern;

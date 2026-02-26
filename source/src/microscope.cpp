@@ -3,7 +3,7 @@
 #include "microscope.h"
 #include "detector.h"
 
-Microscope::Microscope() : m_tiltAngle(-70), m_TiltAxis(0)
+Microscope::Microscope() : m_tiltAngle(70), m_TiltAxis(0)
 {
     // default accelerating voltage is 20 kV, corresponding to an electron wavelength of 0.0251 nm
     setAcceleratingVoltage(20);
