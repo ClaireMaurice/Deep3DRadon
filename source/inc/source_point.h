@@ -3,15 +3,23 @@
 
 #include "eigen3/Eigen/Core"
 #include "orientation.h"
+#include "unit_cell.h"
 
 class SourcePoint
 {
 public:
-    SourcePoint();
+    SourcePoint() {}
+
     SourcePoint(const Euler& orientation, const Eigen::Vector3d& position):
         m_orientation(orientation),
         m_position(position)
     {}
+
+    SourcePoint(const Euler& orientation, const Eigen::Vector3d& position, const UnitCell& unitCell):
+        m_orientation(orientation),
+        m_position(position),
+        m_unitCell(unitCell)
+    {}    
     
     ~SourcePoint() {
         // nothing to do for now, but if we had allocated resources we should release them here
@@ -24,6 +32,10 @@ public:
     Eigen::Vector3d getPosition() const {
         return m_position;
     }
+
+    UnitCell getUnitCell() const {
+        return m_unitCell;
+    }
     
 
     void dump() const {
@@ -32,10 +44,9 @@ public:
         std::cout << "Position: " << m_position.transpose() << std::endl;
     }; // for debugging purposes, to print the source point parameters
 
-
-
 private:
     Euler m_orientation; // the orientation of the source point, which can be used to calculate the diffraction pattern based on the orientation of the crystal and the microscope
     Eigen::Vector3d m_position; // the position of the source point in 3D space, which can be used to calculate the diffraction pattern based on the position of the crystal and the microscope
+    UnitCell m_unitCell; // the unit cell of the crystal, which can be used to calculate the diffraction pattern based on the lattice parameters and atomic positions of the crystal    
 
 };

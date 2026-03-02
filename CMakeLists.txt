@@ -28,6 +28,7 @@ set(SOURCES
     source/src/k_lines.cpp
     source/src/projector.cpp
     source/src/local_radon_box.cpp
+    source/src/unit_cell.cpp
 )
 
 # Add the executable
