@@ -1,16 +1,7 @@
 # Elastic Lattice Distortion
 
-
-
 ## In this document, I will work out the math for the elastic lattice distortion. I will start with the current implementation and then change the convention for the lattice matrix.
 
-
-
-Good, I can see the current implementation. Now I need to change the convention for the lattice matrix. The current convention has:
-
-aVec along x-axis
-bVec in xy-plane
-cVec computed
 The new convention should have:
 
 cVec along z-axis: (0, 0, c)
@@ -26,46 +17,12 @@ If aVec = (aX, aY, aZ):
 aVec · cVec = accos(beta) => aZc = accos(beta) => aZ = a*cos(beta)
 aVec · bVec = abcos(gamma) => aYbsin(alpha) + aZbcos(alpha) = abcos(gamma) => aY = a*(cos(gamma) - cos(beta)cos(alpha))/sin(alpha)
 |aVec|^2 = a^2 => aX^2 + aY^2 + aZ^2 = a^2
-So aX = sqrt(a^2 - aY^2 - aZ^2) = sqrt(a^2 - a^2*(cos(gamma) - cos(beta)cos(alpha))^2/sin^2(alpha) - a^2cos^2(beta)) = a*sqrt(1 - (cos(gamma) - cos(beta)cos(alpha))^2/sin^2(alpha) - cos^2(beta))
-
-Let me simplify the expression under the square root: 1 - (cos(gamma) - cos(beta)cos(alpha))^2/sin^2(alpha) - cos^2(beta) = (sin^2(alpha) - (cos(gamma) - cos(beta)cos(alpha))^2 - cos^2(beta)sin^2(alpha)) / sin^2(alpha)
-
-= (sin^2(alpha)*sin^2(beta) - (cos(gamma) - cos(beta)cos(alpha))^2) / sin^2(alpha)
-
-This is getting messy. Let me use the volume formula instead. For a parallelepiped: V = abcsqrt(1 + 2cos(alpha)*cos(beta)*cos(gamma) - cos^2(alpha) - cos^2(beta) - cos^2(gamma))
-
-I can derive aX from the volume and the other components. The cross product bVec × cVec gives (bcsin(alpha), 0, 0), so the volume becomes V = aX * bcsin(alpha). This means I can solve for aX directly from the volume formula, but it's simpler to just compute aX = sqrt(a^2 - aY^2 - aZ^2) and check if the discriminant is valid to catch degenerate cases.
-
-Perfect! I've refactored the lattice matrix construction to use the new convention where:
-
-cVec is collinear to c (along the z-axis): (0, 0, c)
-bVec lies in the yz-plane making angle α with cVec: (0, b·sin(α), b·cos(α))
-aVec is computed to satisfy the angle constraints with both bVec and cVec
-The changes in mechanics.cpp:51-90:
-
-cVec is now directly (0, 0, c)
-bVec is in the yz-plane with y-component b·sin(α) and z-component b·cos(α)
-aVec components are computed as:
-aZ = a·cos(β) (from angle β with cVec)
-aY = a·cos(γ)/sin(α) (from angle γ with bVec)
-aX = √(a² - aY² - aZ²) (from magnitude constraint)
-
-This new convention aligns with Channel5 convension.
-
-## TODO : need to check the formulas for aY and aX by comparison with the volume formula and the cross product of bVec and cVec to ensure consistency. Also need to handle degenerate cases where the discriminant for aX becomes negative, which would indicate an invalid lattice configuration.
-We have found an error in the formula for aY. The correct formula should be aY = a*(cos(gamma) - cos(alpha)*cos(beta))/sin(alpha). I will update the code accordingly.
-Note to myself : I was right !
+So aX = sqrt(a^2 - aY^2 - aZ^2) 
 
 # Reciprocal lattice transformation:
-The reciprocal lattice vectors also need to be transformed under the deformation. The reciprocal lattice matrix G is given by G = 2π * L^(-T), where L is the lattice matrix. Under deformation, the new lattice matrix becomes F*L, where F is the deformation gradient. Therefore, the new reciprocal lattice matrix G' can be computed as:
-G' = 2π * (F*L)^(-T) = 2π * L^(-T) * F^(-T) = G * F^(-T)    
-This means that to get the deformed reciprocal lattice, we can take the original reciprocal lattice and multiply it by the inverse transpose of the deformation gradient. This is important for correctly transforming the atomic positions in reciprocal space, which is necessary for accurate diffraction pattern simulations.
-Remember that for crystallographers, the reciprocal lattice vectors are defined as:
-a* = (b × c) / V
-b* = (c × a) / V
-c* = (a × b) / V
-where V is the volume of the unit cell given by V = a · (b × c). Under deformation, the volume and the cross products will change, so we need to ensure that the reciprocal lattice is updated accordingly to maintain the correct relationships between the direct and reciprocal lattices.
-So we need to drop the 2π factor in the reciprocal lattice definition to be consistent with the crystallographic convention. 
+The reciprocal lattice vectors also need to be transformed under the deformation. The reciprocal lattice matrix G is given by G = L^(-T), where L is the lattice matrix. Under deformation, the new lattice matrix becomes F*L, where F is the deformation gradient. Therefore, the new reciprocal lattice matrix G' can be computed as:
+G' = (F*L)^(-T) = L^(-T) * F^(-T) = G * F^(-T)    
+This means that to get the deformed reciprocal lattice, we can take the original reciprocal lattice and multiply it by the inverse transpose of the deformation gradient. 
 
 # Stress tensors
 
@@ -77,7 +34,7 @@ where C is the fourth-order elasticity tensor. For isotropic materials, C can be
 In the context of lattice distortions, the stress tensor can provide insights into the internal forces within the material due to the deformation, which can affect properties such as phase stability, defect formation, and mechanical behavior. It may be useful to compute the stress tensor in future work to analyze the effects of different deformation gradients on the material properties and to compare with experimental measurements of stress and strain in deformed crystals.   
 
 Make a clear distinction between the different types of stress tensors (e.g., Cauchy stress, Piola-Kirchhoff stress) and their respective applications in the context of lattice distortions.
-I am waiting for your input on that last point before I proceed with the implementation of stress tensor calculations.
+
 OK, you don't seem to understand the difference between the different types of stress tensors. Let me explain:
 - Cauchy stress (σ): This is the true stress tensor that represents the force per unit area in the deformed configuration. It is symmetric and is commonly used in continuum mechanics to describe the internal forces within a material under deformation.
 - First Piola-Kirchhoff stress (P): This is a non-symmetric tensor that relates the force in the reference configuration to the area in the deformed configuration. It is defined as P = F * S, where S is the second Piola-Kirchhoff stress tensor.
