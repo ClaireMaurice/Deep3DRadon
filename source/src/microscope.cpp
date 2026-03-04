@@ -11,6 +11,12 @@ Microscope::Microscope() : m_tiltAngle(70), m_TiltAxis(0)
     m_detector = new Detector();
 }
 
+void Microscope::setTilt(double tiltAngle, int tiltAxis)
+{
+    m_tiltAngle = tiltAngle;
+    m_TiltAxis = tiltAxis;
+    m_qMS = Quat(-m_tiltAngle, m_TiltAxis);
+}
 
 void Microscope::setAcceleratingVoltage(double voltage_kV) {
     m_acceleratingVoltage = voltage_kV;

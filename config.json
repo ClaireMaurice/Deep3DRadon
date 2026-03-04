@@ -1,0 +1,57 @@
+{
+  "output_folder": "../output",
+  
+  "microscope": {
+    "accelerating_voltage_kV": 20.0,
+    "tilt_angle_deg": 70.0,
+    "tilt_axis": 0
+  },
+  
+  "detector": {
+    "num_pixels_x": 1344,
+    "num_pixels_y": 1024,
+    "pixel_size": 23.47
+  },
+
+  "crystal": {
+    "element": "Copper",
+    "structure_type": "FCC",
+    "lattice_parameter": 3.615
+  },
+  "source_point": {
+    "euler_angles": {
+      "phi1": 10.0,
+      "Phi": 0.0,
+      "phi2": 0.0
+    },
+    "position": {
+      "x": 0.5,
+      "y": 0.7,
+      "z": 0.5
+    },
+    "deformation_gradient": [
+      [1.003, 0.005, 0.0],
+      [0.005, 0.998, 0.0],
+      [0.0, 0.0, 1.0]
+    ]
+  },
+  "view_point": {
+    "euler_angles": {
+      "phi1": 10.50,
+      "Phi": 0.30,
+      "phi2": 0.20
+    },
+    "position": {
+      "x": 0.505,
+      "y": 0.705,
+      "z": 0.505
+    }
+  },
+  "radon_transform": {
+    "precompute": true,
+    "box_size_precompute": 64,
+    "box_size_final": 16,
+    "increment_precompute": 0.001,
+    "increment_final": 0.0005
+  }
+}

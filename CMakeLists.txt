@@ -18,6 +18,7 @@ find_package(TIFF REQUIRED)
 # Add source files
 set(SOURCES
     source/src/main.cpp
+    source/src/config_handler.cpp
     source/src/orientation.cpp
     source/src/dev_test.cpp
     source/src/detector.cpp
@@ -39,6 +40,7 @@ target_include_directories(d3r PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/source/inc
     ${CMAKE_CURRENT_SOURCE_DIR}/source/thirdParty/Eigen
     ${CMAKE_CURRENT_SOURCE_DIR}/source/thirdParty/CImg
+    ${CMAKE_CURRENT_SOURCE_DIR}/source/thirdParty/nlohmann
     ${PNG_INCLUDE_DIRS}
 )
 

@@ -12,7 +12,7 @@ public:
     ~Microscope();    
 
     void setAcceleratingVoltage(double voltage_kV);
-    void setTiltAngle(double tiltAngle_deg, int tiltAxis);
+    void setTilt(double tiltAngle_deg, int tiltAxis);
     void setDetector(Detector* detector);
 
     double getAcceleratingVoltage() const { return m_acceleratingVoltage; }

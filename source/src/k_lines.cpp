@@ -22,52 +22,48 @@ void KLines::dump() const
 
 int KLines::buildKLines(Eigen::Vector3d n, double s2, Eigen::Vector3d sp, int img_width, int img_height)
 {
+    getPlaneTrace(n, sp); // this will compute the a and b parameters of the KLines, as well as the is_horizontal parameter
 
-    bool verbose = false; // set to true to enable verbose output for debugging purposes
+    double length = getLength(img_width, img_height); // this will compute the visible length of the KLines,
 
-    if (verbose)
+    if (length > 0)
     {
-        std::cout << "Building KLines for normal vector n: " << n.transpose() << std::endl;
-        std::cout << "s2: " << s2 << std::endl;
-        std::cout << "Source point sp: " << sp.transpose() << std::endl;
-        std::cout << "Image width: " << img_width << std::endl;
-        std::cout << "Image height: " << img_height << std::endl;
-    }
-    
-    // convert to PC coordinates in pixels (TODO : check that the conversion is correct)
-    Eigen::Vector3d PCpix(sp(0)*img_width,(1-sp(1))*img_height,sp(2)*img_width); // in pixels, with the origin at the top left corner of the image, and the y axis pointing downwards
- 
-
-
-    n = n.normalized();
-    if (n(1) < 0)
-    {
-        n = -n;
-    }
-
-    // short hand notation
-    double nx = n(0);
-    double ny = n(1);
-    double nz = n(2);
-    double sx = PCpix(0);
-    double sy = PCpix(1);
-    double sz = PCpix(2);
-
-    F = (nx * sx - ny * sy - nz * sz); // precompute the F term for later use in the conic coefficients
-
-    is_horizontal = fabs(ny) > fabs(nx); // we can determine if the conic is a horizontal or vertical
-
-    if (is_horizontal)
-    {
-        a = nx / ny;
-        b = -F / ny;
+        // this reflector is visible on the screen, we can proceed to compute the conic coefficients
+        A = n(0) * n(0) - s2;
+        B = -n(0) * n(1);
+        C = n(1) * n(1) - s2;
+        D = -A * sp(0) - B * sp(1) + n(0) * n(2) * sp(2);
+        E = -C * sp(1) - B * sp(0) - n(1) * n(2) * sp(2);
+        F = F * F - s2 * (sp(0) * sp(0) + sp(1) * sp(1) + sp(2) * sp(2));
     }
     else
     {
-        a = ny / nx;
-        b = F / nx;
+        return 0; // skip this reflector if it is not visible on the screen
     }
+    return 1; // the KLines have been successfully built, and the conic coefficients have been computed
+}
 
+void KLines::getPlaneTrace(Eigen::Vector3d n, Eigen::Vector3d sp)
+{
+
+    F = (n(0) * sp(0) - n(1) * sp(1) - n(2) * sp(2)); // precompute the F term for later use in the conic coefficients
+
+    is_horizontal = fabs(n(1)) > fabs(n(0)); // we can determine if the conic is a horizontal or vertical
+
+    if (is_horizontal)
+    {
+        a = n(0) / n(1);
+        b = -F / n(1);
+    }
+    else
+    {
+        a = n(1) / n(0);
+        b = F / n(0);
+    }
+}
+
+double KLines::getLength(int img_width, int img_height) const
+{
     // check screen intersection
     Eigen::Vector2d TopLeft(0, 0);
     Eigen::Vector2d BottomRight(img_width, img_height);
@@ -104,23 +100,7 @@ int KLines::buildKLines(Eigen::Vector3d n, double s2, Eigen::Vector3d sp, int im
             return 0; // skip this reflector if it is not visible on the screen
         }
     }
-
-    if (verbose)
-    {
-        std::cout << "Screen intersection points: " << std::endl;
-        std::cout << "P1: " << P1.transpose() << std::endl;
-        std::cout << "P2: " << P2.transpose() << std::endl;
-    }
-
-    // compute the conic coefficients
-    A = nx * nx - s2;
-    B = -nx * ny;
-    C = ny * ny - s2;
-    D = -A * sx - B * sy + nx * nz * sz;
-    E = -C * sy - B * sx - ny * nz * sz;
-    F = F * F - s2 * (sx * sx + sy * sy + sz * sz);
-
-    return 1; // this reflector is visible on the screen, we can proceed to compute the intersection points with the screen and draw the spot on the screen
+    return (P2 - P1).norm(); // return the length of the KLines, which will be used to filter out short KLines before computing the integral of the pattern along the KLines, which will be used as input for the neural network to predict the 3D structure of the crystal based on the simulated diffraction pattern
 }
 
 int KLines::getY(double x, double &y1, double &y2) const
@@ -154,40 +134,52 @@ int KLines::getX(double y, double &x1, double &x2) const
 void KLines::draw(CImg<unsigned char> &img) const
 {
     unsigned char white[] = {255, 255, 255};
-     // let's do the work:
-    if(isHorizontal()) {
+    // let's do the work:
+    if (isHorizontal())
+    {
         // we can iterate over the x coordinates of the image and compute the corresponding y coordinates of the conic section defined by the k_lines parameters, and then draw a line between the two intersection points to visualize the spot on the screen
-        for (int x = 0; x < img.width() ; x++) {
+        for (int x = 0; x < img.width(); x++)
+        {
             double y1, y2;
-            if(getY(x, y1, y2)) { // get the corresponding y coordinates of the conic section defined by the k_lines parameters for the given x coordinate
-                if(y1 >= 0 && y1 < img.height()) {
-                    img.draw_point(x, y1, white); 
+            if (getY(x, y1, y2))
+            { // get the corresponding y coordinates of the conic section defined by the k_lines parameters for the given x coordinate
+                if (y1 >= 0 && y1 < img.height())
+                {
+                    img.draw_point(x, y1, white);
                 }
-                if(y2 >= 0 && y2 < img.height()) {
-                    img.draw_point(x, y2, white); 
+                if (y2 >= 0 && y2 < img.height())
+                {
+                    img.draw_point(x, y2, white);
                 }
             }
         }
-    } else {
+    }
+    else
+    {
         // we can iterate over the y coordinates of the image and compute the corresponding x coordinates of the conic section defined by the k_lines parameters, and then draw a line between the two intersection points to visualize the spot on the screen
-        for (int y = 0; y < img.height() ; y++) {
+        for (int y = 0; y < img.height(); y++)
+        {
             double x1, x2;
-            if(getX(y, x1, x2)) {  // get the corresponding x coordinates of the conic section defined by the k_lines parameters for the given y coordinate
-                if(x1 >= 0 && x1 < img.width()) {
-                    img.draw_point(x1, y, white); 
+            if (getX(y, x1, x2))
+            { // get the corresponding x coordinates of the conic section defined by the k_lines parameters for the given y coordinate
+                if (x1 >= 0 && x1 < img.width())
+                {
+                    img.draw_point(x1, y, white);
                 }
-                if(x2 >= 0 && x2 < img.width()) {
-                    img.draw_point(x2, y, white); 
+                if (x2 >= 0 && x2 < img.width())
+                {
+                    img.draw_point(x2, y, white);
                 }
             }
         }
     }
 }
 
+double KLines::getIntegral(const Pattern &pattern) const {
+    return getIntegral(pattern, nullptr, nullptr, nullptr, nullptr); // call the more general getIntegral function with null pointers for the plus and minus branches and their counts, since we don't want to compute those in this case
+}
 
-
-double KLines::getIntegral(const Pattern &pattern) const
-{
+double KLines::getIntegral(const Pattern &pattern, double *plus, double *minus, int *nbPlus, int *nbMinus) const {
     // TODO : implement the function to compute the integral of the pattern along the KLines, which will be used as input for the neural network to predict the 3D structure of the crystal based on the simulated diffraction pattern
     double integral = 0.0;
 
@@ -201,10 +193,21 @@ double KLines::getIntegral(const Pattern &pattern) const
                 if (y1 >= 0 && y1 < pattern.getHeight())
                 {
                     integral += pattern.getPattern().linear_atXY(x, y1);
+                    if (plus) 
+                        *plus += pattern.getPattern().linear_atXY(x, y1);
+                    
+                    if(nbPlus) 
+                        (*nbPlus)++;
+                    
                 }
                 if (y2 >= 0 && y2 < pattern.getHeight())
                 {
                     integral += pattern.getPattern().linear_atXY(x, y2);
+                    if (minus) 
+                        *minus += pattern.getPattern().linear_atXY(x, y2);
+                    
+                    if(nbMinus) 
+                        (*nbMinus)++;
                 }
             }
         }
@@ -219,10 +222,26 @@ double KLines::getIntegral(const Pattern &pattern) const
                 if (x1 >= 0 && x1 < pattern.getWidth())
                 {
                     integral += pattern.getPattern().linear_atXY(x1, y);
+                    if (plus)
+                    {
+                        *plus += pattern.getPattern().linear_atXY(x1, y);
+                    }
+                    if (nbPlus)
+                    {
+                        (*nbPlus)++;
+                    }
                 }
                 if (x2 >= 0 && x2 < pattern.getWidth())
                 {
                     integral += pattern.getPattern().linear_atXY(x2, y);
+                    if (minus)
+                    {
+                        *minus += pattern.getPattern().linear_atXY(x2, y);
+                    }
+                    if (nbMinus)
+                    {
+                        (*nbMinus)++;
+                    }
                 }
             }
         }

@@ -13,6 +13,10 @@ CMakeUserPresets.json
 
 *build*
 *.vs*
+*output*
+*documentation*
+*.log
+
 
 # CLion
 #  JetBrains specific template is maintained in a separate JetBrains.gitignore that can

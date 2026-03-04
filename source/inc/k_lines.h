@@ -16,8 +16,12 @@ public:
     int getY(double x, double& y1, double& y2) const;
     int getX(double y, double& x1, double& x2) const;
 
+    double getIntegral(const Pattern& pattern, double* plus, double* minus, int* nbPlus, int* nbMinus) const; // compute the integral of the pattern along the KLines, which will be used as input for the neural network to predict the 3D structure of the crystal based on the simulated diffraction pattern
     double getIntegral(const Pattern& pattern) const; // compute the integral of the pattern along the KLines, which will be used as input for the neural network to predict the 3D structure of the crystal based on the simulated diffraction pattern
-    
+    void getPlaneTrace(Eigen::Vector3d n, Eigen::Vector3d sp); // compute the trace of the KLines on the pattern, which will be used to compute the integral of the pattern along the KLines, which will be used as input for the neural network to predict the 3D structure of the crystal based on the simulated diffraction pattern; 
+    bool isValid() const; // check if the KLines are valid, long enough and well equilibrated, which will be used to filter out invalid KLines before computing the integral of the pattern along the KLines, which will be used as input for the neural network to predict the 3D structure of the crystal based on the simulated diffraction pattern
+    double getLength(int img_width, int img_height) const; // compute the length of the KLines, which will be used to filter out short KLines before computing the integral of the pattern along the KLines, which will be used as input for the neural network to predict the 3D structure of the crystal based on the simulated diffraction pattern
+
     // I want to add a function to draw the KLine of the pattern
     void draw(CImg<unsigned char>& img) const; // draw the KLine on the pattern, which can be used for visualization purposes
 

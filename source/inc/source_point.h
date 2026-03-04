@@ -33,6 +33,12 @@ public:
         return m_position;
     }
 
+    Eigen::Vector3d getPositionInPixels(int img_width, int img_height) const {
+        // convert the position from normalized coordinates (0 to 1) to pixel coordinates based on the image width and height
+        return Eigen::Vector3d(m_position(0) * img_width, (1 - m_position(1)) * img_height, m_position(2) * img_width);
+    }
+
+
     UnitCell getUnitCell() const {
         return m_unitCell;
     }

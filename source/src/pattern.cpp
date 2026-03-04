@@ -40,8 +40,8 @@ void Pattern::simulate(Microscope& microscope, Crystal& crystal, SourcePoint& so
         double s2 = reflector(3); // the fourth component of the projector normal is the sin^2(theta) value, 
      
         KLines k_lines;
-        int result = k_lines.buildKLines(g_hkl, s2, source_point.getPosition(), img_width, img_height);
-       
+        int result = k_lines.buildKLines(g_hkl, s2, source_point.getPositionInPixels(img_width, img_height), img_width, img_height);
+        //verbose = true; // for debugging purposes, we can set this to true to print the parameters of the KLines and the intermediate results, and we can set it to false to disable the debug output for a cleaner output when we are confident that the KLines are being built correctly
         if(result == 0) {
             if (verbose)
                 std::cout << "Not visible on the screen, skipping this reflector." << std::endl;
@@ -50,7 +50,11 @@ void Pattern::simulate(Microscope& microscope, Crystal& crystal, SourcePoint& so
             if (verbose)
                 std::cout << "Visible on the screen, drawing the Kikuchi lines for this reflector." << std::endl;
 
-            k_lines.draw(pattern_img); 
+            k_lines.draw(pattern_img);
+
+            //pattern_img.save("pattern.png"); // save the pattern image for visualization purposes, we can later replace this with a more accurate representation of the diffraction pattern, but for now this is a simple way to visualize the diffraction spots on the screen
+            //std::cout << "Press Enter to continue..." << std::endl; // wait for user input before proceeding, to allow time to visualize the Kikuchi lines for this reflector on the screen
+            //std::cin.get();
         }
     }
 }

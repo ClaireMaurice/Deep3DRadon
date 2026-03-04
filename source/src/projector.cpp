@@ -43,6 +43,10 @@ void Projector::buildProjectorList(Microscope& microscope, Crystal& crystal, Sou
         g_hkl = R_DC * g_hkl; // apply the transport matrix to get the orientation of the reciprocal lattice vector with respect to the detector frame
 
         g_hkl.normalize(); // we can normalize the reciprocal lattice vector to get the projection normal, which will be used to determine the visibility of the reflector on the screen based on the microscope and source point parameters
+        if(g_hkl(1) < 0) { // we want the normal vector to point towards the screen, so if the y component is negative we need to flip the normal vector
+            g_hkl = -g_hkl;
+        }
+        
         Eigen::Vector4d projector_normal(g_hkl(0), g_hkl(1), g_hkl(2), s2); // we can store the projection normal as a 4D vector, where the first three components are the reciprocal lattice vector and the fourth component is the sin^2(theta) value, which will be used to determine the visibility of the reflector on the screen based on the microscope and source point parameters
         projector_list.push_back(projector_normal); // add the projection normal to the projector list, which will be used to simulate the diffraction pattern on the detector based on the microscope and source point parameters
     }
