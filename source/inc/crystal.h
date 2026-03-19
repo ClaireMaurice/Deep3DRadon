@@ -1,6 +1,8 @@
 #pragma once
 #include "unit_cell.h"
 #include "reflector.h"
+#include "orientation.h" // pour 'Euler'
+#include "microscope.h"  // pour 'Microscope'
 
 class Crystal
 {
@@ -20,6 +22,10 @@ public:
     std::vector<Reflector> getReflectors() const {
         return m_reflectors;
     }
+
+
+    // Cherche la section "public:" et ajoute cette ligne :
+    Eigen::Vector3d getNormalForVP(int reflectorIndex, const Euler& orient, const Eigen::Vector3d& VP, const Microscope& microscope) const;
     
 
 

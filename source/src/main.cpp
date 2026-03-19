@@ -4,7 +4,10 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <errno.h>
-// let's try to use CImg library to load and display an image
+#include <random>
+#include <iomanip>
+#include <sstream>
+#include <cmath>
 
 #define cimg_use_png
 #define cimg_use_tiff
@@ -19,77 +22,117 @@
 #include "pattern.h"
 #include "radon_transform.h"
 
-
 int main(int argc, char *argv[])
 {
-    // Load configuration from JSON file
+    // --- 1. Chargement de la configuration ---
     std::string configFile = "../config.json";
-    if (argc > 1)
-        configFile = argv[1]; // Allow specifying a different config file
-    else
-        std::cout << "No config file specified, using default '../config.json'." << std::endl;
+    if (argc > 1) configFile = argv[1]; 
+    else std::cout << "No config file specified, using default '../config.json'." << std::endl;
 
-
-    // Load and parse configuration
     ConfigHandler config;
     if (!config.load(configFile)) {
         std::cerr << "Failed to load configuration file. Aborting." << std::endl;
         return 1;
     }
 
-    // Create output folder
     if (!config.createOutputFolder()){
         std::cerr << "Failed to create output folder. Aborting." << std::endl;
         return 1;
     }
 
-    // Print loaded configuration
-    //config.printParameters();
-
+    // --- 2. Initialisation Microscope & Cristal (Fixes) ---
     Microscope microscope;
     microscope.setAcceleratingVoltage(config.getAcceleratingVoltage());
-    microscope.setTilt(config.getTiltAngle(), config.getTiltAxis());
-    microscope.dump();
+    microscope.setTilt(config.getTiltAngle(), config.getTiltAxis()); 
     
     Crystal crystal;
     crystal.buildUnitCell(config.getCrystalElement(), config.getCrystalStructure(), config.getLatticeParameter());
     crystal.buildReflectors();
-    crystal.dump();
 
-    // quick and dirty solution to apply a distortion to the unit cell parameters to test the effect of unit cell deformation on the diffraction pattern and the Radon transform, which will be used for training the neural network to predict the 3D structure of the crystal based on the simulated diffraction pattern
-    // this is the F tensor - should be symmetric if no rotation... to be further developed properly to deal with continuum mechanics stress and strain tensors
-    // And remember that elastic strains are of the order of 10⁻3
-
-   
+    // Déformation de la maille (Logique de Claire)
     Eigen::Matrix3d latticeMatrix = crystal.getUnitCell().getLatticeMatrix();
-    Eigen::Matrix3d deformedLatticeMatrix = config.getDeformationGradient() * latticeMatrix; // apply the deformation gradient to the lattice matrix to get the deformed lattice matrix
-    UnitCell deformedUnitCell = UnitCell::getFromLatticeMatrix(deformedLatticeMatrix);       // create a new unit cell based on the deformed lattice matrix, which will be used to calculate the diffraction pattern and the Radon transform based on the deformed unit cell parameters, which will be used for training the neural network to predict the 3D structure of the crystal based on the simulated diffraction pattern
+    Eigen::Matrix3d deformedLatticeMatrix = config.getDeformationGradient() * latticeMatrix; 
+    UnitCell deformedUnitCell = UnitCell::getFromLatticeMatrix(deformedLatticeMatrix); 
 
-    SourcePoint sourcePoint(config.getSourceEuler(), config.getSourcePosition(),deformedUnitCell);
-    config.getSourceEuler();
-
-    Pattern pattern;
-    pattern.simulate(microscope, crystal, sourcePoint);
-    pattern.save(config.getOutputFolder() + "/simulated_pattern.png");
-
-    // Here we use the initial undeformed unit cell for the view point, which is what we would have in a real experiment where we don't know the exact unit cell parameters of the crystal
-    SourcePoint viewPoint(config.getViewEuler(), config.getViewPosition(), crystal.getUnitCell());
+    // --- 3. Paramètres de la base de données ---
+    const int NB_ORIENTATIONS = 100;
+    const int NB_VP_PER_ORIENT = 10;
     
-//    double deso = viewPoint.getOrientation().desorientationAngle(sourcePoint.getOrientation(), 195); // calculate the desorientation angle between the view point orientation and the source point orientation, which will be used to determine the visibility of the reflectors on the screen based on the microscope and source point parameters, and which will be used for training the neural network to predict the 3D structure of the crystal based on the simulated diffraction pattern
-//    std::cout << "Desorientation angle between view point and source point: " << deso << " degrees" << std::endl;
+    // MODIFICATION 1 : Passage à une variation de 1/100.
+    // Si la base_vp est à ~0.5, 1% de variation correspond à +/- 0.005.
+    const double VP_RANGE = 0.005; 
 
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_real_distribution<> dis_euler(0.0, 360.0);
+    std::uniform_real_distribution<> dis_vp(-VP_RANGE, VP_RANGE);
+
+    // --- 4. Préparation du fichier CSV pour l'IA ---
+    std::ofstream csvLabels(config.getOutputFolder() + "/labels.csv");
+    
+    // MODIFICATION 2 : Ajout de la colonne "increment" dans l'en-tête
+    csvLabels << "id,vp_x,vp_y,vp_z,euler_1,euler_2,euler_3,increment";
+    
+    int NB_PLANS = crystal.getReflectors().size();
+    for(int n=0; n < NB_PLANS; ++n) {
+        csvLabels << ",n" << n << "_x,n" << n << "_y,n" << n << "_z";
+    }
+    csvLabels << std::endl;
+
+    int global_id = 0;
+    Eigen::Vector3d base_vp = config.getViewPosition();
+
+    std::cout << "\n=== Debut de la generation du dataset ( " << (NB_ORIENTATIONS * NB_VP_PER_ORIENT) << " samples ) ===" << std::endl;
+
+    // On initialise RadonTransform
     RadonTransform radonTransform(config.getRadonPrecompute(), config.getRadonBoxSizePrecompute(), config.getRadonBoxSizeFinal(), config.getRadonIncrementPrecompute(), config.getRadonIncrementFinal());
-    radonTransform.compute(microscope, crystal, viewPoint, pattern, config.getOutputFolder());
 
-    // Generate basename based on actual parameters
-    Euler viewEuler = config.getViewEuler();
-    Eigen::Vector3d viewPosition = config.getViewPosition();    
+    // --- 5. Boucle Principale ---
+    for (int i = 0; i < NB_ORIENTATIONS; ++i) {
+        
+        double e1 = dis_euler(gen), e2 = dis_euler(gen), e3 = dis_euler(gen);
+        Euler random_orient(e1 * M_PI / 180.0, e2 * M_PI / 180.0, e3 * M_PI / 180.0);
 
-    std::string basename = config.getOutputFolder() + "/radon_transform_(" + std::to_string((int)viewEuler.phi1()) + "," +
-                           std::to_string((int)viewEuler.phi()) + "," + std::to_string((int)viewEuler.phi2()) + ")_(" +
-                           std::to_string((int)(viewPosition.x() * 10)) + "," + std::to_string((int)(viewPosition.y() * 10)) + "," +
-                           std::to_string((int)(viewPosition.z() * 10)) + ")";
-    radonTransform.save(basename, crystal); // save the Radon transform of the pattern to a file with a name that includes the parameters of the view point, which can be used for visualization or for input to the neural network to predict the 3D structure of the crystal based on the simulated diffraction pattern
+        SourcePoint sourcePoint(random_orient, config.getSourcePosition(), deformedUnitCell);
+        Pattern pattern;
+        pattern.simulate(microscope, crystal, sourcePoint);
 
+        for (int j = 0; j < NB_VP_PER_ORIENT; ++j) {
+            
+            // Calcul du ViewPoint avec la nouvelle plage de variation (1/100)
+            Eigen::Vector3d VP(base_vp.x() + dis_vp(gen), base_vp.y() + dis_vp(gen), base_vp.z() + dis_vp(gen));
+            SourcePoint viewPoint(random_orient, VP, crystal.getUnitCell());
+
+            // 1. Calcul de Radon (effectue le precompute/recentrage en interne)
+            radonTransform.compute(microscope, crystal, viewPoint, pattern, config.getOutputFolder());
+
+            std::stringstream ss;
+            ss << std::setw(6) << std::setfill('0') << global_id;
+            std::string id_str = ss.str();
+            
+            // 2. Sauvegarde du binaire (.bin)
+            radonTransform.save(config.getOutputFolder() + "/sample_" + id_str, crystal); 
+
+            // 3. Sauvegarde dans le CSV
+            // On écrit l'ID, le VP, l'orientation et l'incrément (échelle physique)
+            csvLabels << id_str << "," << VP.x() << "," << VP.y() << "," << VP.z()
+                      << "," << e1 << "," << e2 << "," << e3
+                      << "," << config.getRadonIncrementFinal(); // <--- Ajout de l'incrément ici
+
+            // MODIFICATION 3 : Sauvegarde des normales RECENTRÉES
+            // Ce sont les normales finales utilisées pour poser la boîte Radon.
+            for (int n = 0; n < NB_PLANS; ++n) {
+                Eigen::Vector3d finalNormal = radonTransform.getFinalNormal(n);
+                csvLabels << "," << finalNormal.x() << "," << finalNormal.y() << "," << finalNormal.z();
+            }
+            csvLabels << std::endl;
+
+            global_id++;
+            std::cout << "Progression : " << global_id << " / " << (NB_ORIENTATIONS * NB_VP_PER_ORIENT) << "\r" << std::flush;
+        }
+    }
+
+    std::cout << "\nGeneration terminee ! Le fichier CSV contient desormais l'increment et les normales de capture." << std::endl;
+    csvLabels.close();
     return 0;
 }

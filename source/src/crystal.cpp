@@ -1,5 +1,6 @@
 #include <iostream>
 #include "crystal.h"
+#include "orientation.h"
 
 Crystal::Crystal() : m_unitCell(std::vector<double>{1,1,1,90,90,90}, std::vector<Atom>{}) {
     // default constructor corresponding to a simple cubic unit cell with one atom at the origin
@@ -101,6 +102,29 @@ void Crystal::dump() const {
         reflector.getHKL(hkl);
         std::cout << "HKL: (" << hkl(0) << ", " << hkl(1) << ", " << hkl(2) << ")" << std::endl;
     }
+}
+
+Eigen::Vector3d Crystal::getNormalForVP(int reflectorIndex, const Euler& orient, const Eigen::Vector3d& VP, const Microscope& microscope) const {
+    if (reflectorIndex < 0 || reflectorIndex >= (int)m_reflectors.size()) {
+        return Eigen::Vector3d::Zero();
+    }
+
+    // 1. Récupérer les indices HKL du plan
+    Eigen::Vector3i hkl;
+    m_reflectors[reflectorIndex].getHKL(hkl);
+
+    // 2. Calculer la normale dans le repère du CRISTAL
+    // Pour un cube (FCC/BCC), la normale est simplement proportionnelle à (h, k, l)
+    Eigen::Vector3d n_crystal(hkl(0), hkl(1), hkl(2));
+    n_crystal.normalize();
+
+    // 3. Passer du repère CRISTAL au repère ÉCHANTILLON (via l'orientation Euler)
+    Euler orient_copy = orient; 
+    Eigen::Matrix3d R = orient_copy.toRotationMatrix();
+    Eigen::Vector3d n_sample = R * n_crystal;
+
+    // 4. Calculer le vecteur "ViewPoint -> Centre du détecteur" 
+    return n_sample; 
 }
 
 
